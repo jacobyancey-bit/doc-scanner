@@ -1,0 +1,59 @@
+pluginManagement {
+    // Workaround for AGP AndroidLocationsException when both ANDROID_PREFS_ROOT and ANDROID_USER_HOME env vars are set
+    try {
+        def pe = Class.forName("java.lang.ProcessEnvironment")
+        def envField = pe.getDeclaredField("theEnvironment")
+        envField.setAccessible(true)
+        def env = envField.get(null)
+        if (env != null) {
+            env.remove("ANDROID_PREFS_ROOT")
+        }
+
+        def ciEnvField = pe.getDeclaredField("theCaseInsensitiveEnvironment")
+        ciEnvField.setAccessible(true)
+        def ciEnv = ciEnvField.get(null)
+        if (ciEnv != null) {
+            ciEnv.remove("ANDROID_PREFS_ROOT")
+        }
+    } catch (e) {
+        // Ignored
+    }
+
+    includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().toString())
+}
+plugins { id("com.facebook.react.settings")
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.10.0' }
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+  if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
+    ex.autolinkLibrariesFromCommand()
+  } else {
+    def command = [
+      'node',
+      '--no-warnings',
+      '--eval',
+      'require(require.resolve(\'expo-modules-autolinking\', { paths: [require.resolve(\'expo/package.json\')] }))(process.argv.slice(1))',
+      'react-native-config',
+      '--json',
+      '--platform',
+      'android'
+    ].toList()
+    ex.autolinkLibrariesFromCommand(command)
+  }
+}
+
+rootProject.name = 'DocScanner'
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    reactAndroidLibs {
+      from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
+    }
+  }
+}
+
+apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
+useExpoModules()
+
+include ':app'
+includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile())
