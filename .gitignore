@@ -11,3 +11,7 @@ android/local.properties
 *.keystore
 *.log
 
+
+# IDE Configs
+.idea/
+.vscode/
