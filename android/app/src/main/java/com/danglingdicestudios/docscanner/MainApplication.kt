@@ -1,4 +1,4 @@
-package com.jacob.docscanner
+package com.danglingdicestudios.docscanner
 
 import android.app.Application
 import android.content.res.Configuration

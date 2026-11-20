@@ -27,6 +27,7 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="docscan"/>
         <data android:scheme="com.jacob.docscanner"/>
+        <data android:scheme="com.danglingdicestudios.docscanner"/>
       </intent-filter>
       <intent-filter data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
