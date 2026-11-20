@@ -33,25 +33,33 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
       if (doc) {
         // If there is an active web session triggered by your website QR code!
         if (activeWebSession?.sessionId && activeWebSession.callbackUrl && doc.pdfUri) {
-          const pdfBase64 = await PDFService.exportPDFBase64(doc.pdfUri);
-          const success = await DeepLinkService.sendToWebSession(
-            activeWebSession.callbackUrl,
-            activeWebSession.sessionId,
-            pdfBase64,
-            doc.title
-          );
+          try {
+            const pdfBase64 = await PDFService.exportPDFBase64(doc.pdfUri);
+            const success = await DeepLinkService.sendToWebSession(
+              activeWebSession.callbackUrl,
+              activeWebSession.sessionId,
+              pdfBase64,
+              doc.title
+            );
 
-          if (success) {
-            doc.syncStatus = 'synced';
-            Alert.alert('Transferred to Web', 'Document successfully sent to your browser session!');
-            onClearWebSession?.();
+            if (success) {
+              doc.syncStatus = 'synced';
+              Alert.alert('Transferred to Web', 'Document successfully sent to your browser session!');
+              onClearWebSession?.();
+            }
+          } catch (syncErr) {
+            console.warn('Web sync deferred:', syncErr);
           }
         }
 
         setDocuments((prev) => [doc, ...prev]);
       }
-    } catch (error) {
-      Alert.alert('Scan Failed', 'Could not complete scan session.');
+    } catch (error: any) {
+      console.error('Scan handling error:', error);
+      Alert.alert(
+        'Scan Notice',
+        error?.message || 'Could not complete scan session. Ensure camera permission is granted.'
+      );
     } finally {
       setIsScanning(false);
     }

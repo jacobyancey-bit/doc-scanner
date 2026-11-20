@@ -80,7 +80,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
               title="Delete"
               variant="text"
               onPress={onDelete}
-              style={[styles.actionBtn, { marginLeft: spacing.sm }]}
+              style={{ ...styles.actionBtn, marginLeft: spacing.sm }}
               textStyle={{ fontSize: 12, color: colors.error }}
             />
           </View>

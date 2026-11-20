@@ -1,5 +1,5 @@
 import DocumentScanner, {
-  ResponseCode,
+  ScanDocumentResponseStatus,
 } from 'react-native-document-scanner-plugin';
 import { DocumentPage, ScannedDocument } from '../types/document';
 import { PDFService } from './pdfService';
@@ -23,13 +23,27 @@ export class ScannerService {
     } = options;
 
     try {
-      const { status, scannedImages } = await DocumentScanner.scanDocument({
+      const response = await DocumentScanner.scanDocument({
         maxNumDocuments,
         croppedImageQuality: 92,
-        letUserAdjustCrop: true,
       });
 
-      if (status !== ResponseCode.Success || !scannedImages || scannedImages.length === 0) {
+      const { status, scannedImages } = response;
+
+      // Handle normal user cancellation (user backed out of camera)
+      if (status === ScanDocumentResponseStatus.Cancel || status === ('cancel' as any)) {
+        return null;
+      }
+
+      if (
+        status !== ScanDocumentResponseStatus.Success &&
+        status !== ('success' as any) &&
+        (!scannedImages || scannedImages.length === 0)
+      ) {
+        return null;
+      }
+
+      if (!scannedImages || scannedImages.length === 0) {
         return null;
       }
 
@@ -44,7 +58,11 @@ export class ScannerService {
       let pdfUri: string | undefined;
 
       if (autoGeneratePdf) {
-        pdfUri = await PDFService.createPDFFromPages(pages, documentTitle);
+        try {
+          pdfUri = await PDFService.createPDFFromPages(pages, documentTitle);
+        } catch (pdfErr) {
+          console.warn('PDF generation deferred:', pdfErr);
+        }
       }
 
       const scannedDocument: ScannedDocument = {
@@ -60,9 +78,10 @@ export class ScannerService {
 
       return scannedDocument;
     } catch (error) {
-      console.error('Document scanning failed:', error);
+      console.error('Document scanning exception:', error);
       throw error;
     }
   }
 }
+
 

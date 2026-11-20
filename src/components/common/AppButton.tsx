@@ -101,7 +101,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
         <AppText
           variant="button"
           color={getTextColor()}
-          style={[styles.text, textStyle]}
+          style={textStyle ? [styles.text, textStyle] : styles.text}
         >
           {title}
         </AppText>
