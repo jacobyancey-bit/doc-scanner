@@ -19,15 +19,12 @@ export interface ScannedDocument {
 }
 
 /**
- * Universal payload for transferring documents between
- * the mobile app and your website.
+ * Universal payload structure for transferring scanned documents
+ * to the authorized dangling-dice-studios.com web session endpoint.
  */
 export interface WebSyncPayload {
-  version: '1.0';
-  documentId: string;
+  sessionId: string;
   title: string;
-  createdAt: string;
-  pagesBase64?: string[];
-  pdfBase64?: string;
+  pdfBase64: string;
+  timestamp: string;
 }
-
