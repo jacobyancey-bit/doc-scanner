@@ -34,7 +34,7 @@
             },
             {
               "scheme": "https",
-              "host": "*.yourdomain.com",
+              "host": "dangling-dice-studios.com",
               "pathPrefix": "/scan"
             }
           ],
