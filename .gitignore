@@ -15,3 +15,7 @@ android/local.properties
 # IDE Configs
 .idea/
 .vscode/
+
+# Python cache
+__pycache__/
+*.py[cod]
