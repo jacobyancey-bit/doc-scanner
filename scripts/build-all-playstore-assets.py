@@ -1,5 +1,4 @@
 import os
-import shutil
 from PIL import Image
 
 def process_icon_and_banner():
