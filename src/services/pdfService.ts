@@ -78,5 +78,55 @@ export class PDFService {
       encoding: FileSystem.EncodingType.Base64,
     });
   }
+
+  /**
+   * Zero-Retention File Shredder:
+   * Permanently deletes generated PDF files and cached scan page images from physical device storage.
+   */
+  static async deleteDocumentFiles(doc: ScannedDocument): Promise<void> {
+    try {
+      if (doc.pdfUri) {
+        await FileSystem.deleteAsync(doc.pdfUri, { idempotent: true });
+      }
+
+      for (const page of doc.pages) {
+        if (page.imageUri) {
+          await FileSystem.deleteAsync(page.imageUri, { idempotent: true });
+        }
+      }
+    } catch (error) {
+      console.warn('Physical file shredding notice:', error);
+    }
+  }
+
+  /**
+   * Startup Garbage Collection:
+   * Removes temporary PDF files older than 24 hours from interrupted sessions.
+   */
+  static async cleanupOrphanedFiles(): Promise<void> {
+    try {
+      const docDir = FileSystem.documentDirectory;
+      if (!docDir) return;
+
+      const files = await FileSystem.readDirectoryAsync(docDir);
+      const now = Date.now();
+      const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+      for (const file of files) {
+        if (file.endsWith('.pdf')) {
+          const fileUri = `${docDir}${file}`;
+          const info = await FileSystem.getInfoAsync(fileUri);
+          if (info.exists && info.modificationTime) {
+            const age = now - (info.modificationTime * 1000);
+            if (age > MAX_AGE_MS) {
+              await FileSystem.deleteAsync(fileUri, { idempotent: true });
+            }
+          }
+        }
+      }
+    } catch {
+      // Non-blocking silent background garbage collection
+    }
+  }
 }
 
