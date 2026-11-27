@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, FlatList, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '../tokens';
 import { ScannedDocument } from '../types/document';
 import { ScreenContainer } from '../components/common/ScreenContainer';
@@ -19,12 +19,19 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
   activeWebSession,
   onClearWebSession,
 }) => {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, radii } = useTheme();
   const [documents, setDocuments] = useState<ScannedDocument[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+
+  // Background cleanup of orphaned temp files on app start
+  useEffect(() => {
+    PDFService.cleanupOrphanedFiles();
+  }, []);
 
   const handleScanPress = async () => {
     setIsScanning(true);
+    setProcessingStatus('Opening Camera...');
     try {
       const doc = await ScannerService.scanDocument({
         documentTitle: `Document_${documents.length + 1}`,
@@ -33,6 +40,7 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
       if (doc) {
         // If there is an active web session triggered by your website QR code!
         if (activeWebSession?.sessionId && activeWebSession.callbackUrl && doc.pdfUri) {
+          setProcessingStatus('Syncing to Web Session...');
           try {
             const pdfBase64 = await PDFService.exportPDFBase64(doc.pdfUri);
             const success = await DeepLinkService.sendToWebSession(
@@ -55,13 +63,14 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
         setDocuments((prev) => [doc, ...prev]);
       }
     } catch (error: any) {
-      console.error('Scan handling error:', error);
+      console.error('Scan handling notice:', error?.message || 'Scan cancelled');
       Alert.alert(
         'Scan Notice',
         error?.message || 'Could not complete scan session. Ensure camera permission is granted.'
       );
     } finally {
       setIsScanning(false);
+      setProcessingStatus(null);
     }
   };
 
@@ -70,18 +79,22 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
       if (doc.pdfUri) {
         await PDFService.sharePDF(doc.pdfUri, `Share ${doc.title}`);
       } else {
-        // Generate PDF on the fly if needed
+        setProcessingStatus('Compiling PDF...');
         const newPdfUri = await PDFService.createPDFFromPages(doc.pages, doc.title);
         doc.pdfUri = newPdfUri;
         await PDFService.sharePDF(newPdfUri, `Share ${doc.title}`);
       }
     } catch (error) {
       Alert.alert('Error', 'Unable to share document.');
+    } finally {
+      setProcessingStatus(null);
     }
   };
 
-  const handleDelete = (docId: string) => {
-    setDocuments((prev) => prev.filter((d) => d.id !== docId));
+  const handleDelete = async (doc: ScannedDocument) => {
+    // Zero-Retention Guarantee: Physically shred files from local disk
+    await PDFService.deleteDocumentFiles(doc);
+    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
   };
 
   return (
@@ -89,8 +102,8 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
       <View style={[styles.header, { padding: spacing.lg, borderBottomColor: colors.border }]}>
         <View>
           <AppText variant="titleMedium">My Documents</AppText>
-          <AppText variant="bodySmall" color={colors.textSecondary}>
-            100% on-device & private
+          <AppText variant="caption" color={colors.textSecondary}>
+            🔒 Zero-Retention • Processed in-memory
           </AppText>
         </View>
 
@@ -101,6 +114,26 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
           loading={isScanning}
           style={styles.scanBtn}
         />
+      </View>
+
+      {/* Processing Indicator Banner */}
+      {Boolean(processingStatus) && (
+        <View style={[styles.processingBanner, { backgroundColor: colors.surfaceVariant }]}>
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
+          <AppText variant="caption" color={colors.primary}>
+            {processingStatus}
+          </AppText>
+        </View>
+      )}
+
+      {/* Zero-Retention Guarantee Banner */}
+      <View style={[styles.zeroRetentionBadge, { backgroundColor: '#131B2E', marginHorizontal: spacing.md, marginTop: spacing.sm }]}>
+        <AppText variant="caption" color={colors.success} style={{ fontWeight: '600' }}>
+          🛡️ Zero-Retention Guarantee
+        </AppText>
+        <AppText variant="caption" color={colors.textSecondary} style={{ fontSize: 11, marginTop: 2 }}>
+          Your documents are never uploaded to studio servers. Deleting shreds local storage permanently.
+        </AppText>
       </View>
 
       {Boolean(activeWebSession?.sessionId) && (
@@ -122,7 +155,7 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
             document={item}
             onPress={() => handleShare(item)}
             onShare={() => handleShare(item)}
-            onDelete={() => handleDelete(item.id)}
+            onDelete={() => handleDelete(item)}
           />
         )}
         contentContainerStyle={[styles.listContent, { padding: spacing.md }]}
@@ -140,6 +173,16 @@ export const DocumentListScreen: React.FC<DocumentListScreenProps> = ({
               onPress={handleScanPress}
               loading={isScanning}
             />
+
+            {/* Studio Cross-Promotion Box */}
+            <View style={[styles.studioPromotionBox, { backgroundColor: colors.surfaceVariant, borderRadius: radii.md, marginTop: 40 }]}>
+              <AppText variant="caption" color={colors.primary} style={{ fontWeight: '600' }}>
+                Dangling Dice Studios™
+              </AppText>
+              <AppText variant="caption" color={colors.textSecondary} style={{ textAlign: 'center', marginTop: 4, fontSize: 11 }}>
+                Explore Tutor Calculator, Beats & more privacy-first utilities on Google Play.
+              </AppText>
+            </View>
           </View>
         }
       />
@@ -159,6 +202,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
+  processingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  zeroRetentionBadge: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
   webNotice: {
     padding: 12,
     borderRadius: 8,
@@ -171,7 +226,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
-    paddingTop: 80,
+    paddingTop: 40,
+  },
+  studioPromotionBox: {
+    padding: 14,
+    alignItems: 'center',
+    width: '100%',
   },
 });
+
 

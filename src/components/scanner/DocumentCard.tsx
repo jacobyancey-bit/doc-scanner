@@ -30,6 +30,9 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Document ${document.title}, ${document.pageCount} ${document.pageCount === 1 ? 'page' : 'pages'}, created on ${formattedDate}`}
+      accessibilityHint="Tap to view or share this document"
       style={[
         styles.card,
         {
@@ -48,6 +51,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
             source={{ uri: firstPageUri }}
             style={[styles.thumbnail, { borderRadius: radii.sm, backgroundColor: colors.surfaceVariant }]}
             resizeMode="cover"
+            accessible={true}
+            accessibilityLabel={`Thumbnail for ${document.title}`}
           />
         )}
 
